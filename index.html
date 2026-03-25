@@ -1,0 +1,1884 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Initiatief aanmaken - CrowdBuilding</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f3f0eb;
+      color: #130f33;
+      min-height: 100vh;
+    }
+
+    .landing { display: none; /* replaced by dashboard as start screen */ }
+    .landing h1 { font-size: 2rem; margin-bottom: 0.5rem; color: #130f33; }
+    .landing p { color: #666; margin-bottom: 2rem; }
+    .btn-start {
+      background: #e8544e; color: white; border: none; padding: 14px 32px;
+      border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-start:hover { background: #d4433d; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(232,84,78,0.3); }
+
+    /* Modal overlay */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+      z-index: 1000; align-items: center; justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Modal - fixed size, wide */
+    .modal {
+      background: white; border-radius: 20px;
+      width: 95vw; max-width: 1100px;
+      height: 85vh;
+      display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.2);
+      animation: slideUp 0.3s ease;
+    }
+
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 28px; border-bottom: 1px solid #eee; flex-shrink: 0;
+    }
+    .modal-header h2 { font-size: 1.1rem; font-weight: 700; }
+    .btn-close {
+      width: 36px; height: 36px; border-radius: 50%; border: none;
+      background: #f0f0f3; cursor: pointer; font-size: 1.2rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s; color: #666;
+    }
+    .btn-close:hover { background: #e0e0e5; }
+
+    .autosave {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.8rem; color: #22c55e; margin-left: auto; margin-right: 16px;
+    }
+    .autosave-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
+
+    /* Modal body */
+    .modal-body { display: flex; flex: 1; overflow: hidden; }
+
+    /* Sidebar (modal) */
+    .sidebar {
+      width: 250px; padding: 28px 24px; border-right: 1px solid #eee;
+      flex-shrink: 0; background: #fafafa; overflow-y: auto;
+    }
+    .sidebar-steps { list-style: none; }
+    .sidebar-step {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px; border-radius: 10px; margin-bottom: 4px;
+      cursor: pointer; transition: all 0.2s; font-size: 0.9rem; color: #999;
+    }
+    .sidebar-step:hover { background: #f0f0f3; color: #666; }
+    .sidebar-step.active { color: #1a1a2e; font-weight: 600; background: #f0f0f3; }
+    .sidebar-step.completed { color: #1a1a2e; }
+    .step-number {
+      width: 28px; height: 28px; border-radius: 50%; border: 2px solid #ddd;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 600; flex-shrink: 0; transition: all 0.2s;
+    }
+    .sidebar-step.active .step-number { border-color: #e8544e; background: #e8544e; color: white; }
+    .sidebar-step.completed .step-number { border-color: #22c55e; background: #22c55e; color: white; }
+
+    /* Step content - scrollable right side */
+    .step-content-wrapper {
+      flex: 1; overflow-y: auto; padding: 36px 48px;
+    }
+    .step-content { display: none; max-width: 640px; }
+    .step-content.active { display: block; animation: fadeIn 0.3s ease; }
+    .step-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 4px; }
+    .step-subtitle { color: #888; font-size: 0.9rem; margin-bottom: 28px; }
+
+    /* Form elements */
+    .form-group { margin-bottom: 24px; }
+    .form-label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; }
+    .form-label .required { color: #e8544e; margin-left: 2px; }
+    .form-hint { font-size: 0.8rem; color: #999; margin-bottom: 8px; }
+    .form-input {
+      width: 100%; padding: 12px 16px; border: 1.5px solid #e0e0e5;
+      border-radius: 10px; font-size: 0.95rem; font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s; outline: none; background: white;
+    }
+    .form-input:focus { border-color: #e8544e; box-shadow: 0 0 0 3px rgba(232,84,78,0.1); }
+    .form-input.error { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.1); }
+    .form-error { color: #ef4444; font-size: 0.8rem; margin-top: 4px; display: none; }
+    .form-error.visible { display: block; }
+    textarea.form-input { min-height: 120px; resize: vertical; }
+
+    .form-select {
+      width: 100%; padding: 12px 16px; border: 1.5px solid #e0e0e5;
+      border-radius: 10px; font-size: 0.95rem; font-family: inherit; outline: none;
+      background: white; cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 16px center;
+    }
+    .form-select:focus { border-color: #e8544e; box-shadow: 0 0 0 3px rgba(232,84,78,0.1); }
+
+    /* Image upload */
+    .upload-area {
+      border: 2px dashed #ddd; border-radius: 12px; padding: 32px;
+      text-align: center; cursor: pointer; transition: all 0.2s; background: #fafafa;
+    }
+    .upload-area:hover { border-color: #e8544e; background: #fef5f5; }
+    .upload-icon { font-size: 2rem; margin-bottom: 8px; }
+    .upload-text { font-size: 0.9rem; color: #666; }
+    .upload-text strong { color: #e8544e; }
+    .upload-formats { font-size: 0.8rem; color: #999; margin-top: 4px; }
+
+    /* Chip/tag selector */
+    .chip-group { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      padding: 8px 16px; border: 1.5px solid #e0e0e5; border-radius: 100px;
+      font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+      background: white; user-select: none; display: flex; align-items: center; gap: 6px;
+    }
+    .chip:hover { border-color: #ccc; background: #f8f8fa; }
+    .chip.selected { border-color: #e8544e; background: #fef5f5; color: #e8544e; font-weight: 500; }
+    .chip .chip-remove {
+      display: none; width: 16px; height: 16px; border-radius: 50%;
+      background: rgba(232,84,78,0.2); color: #e8544e; font-size: 0.7rem;
+      align-items: center; justify-content: center; cursor: pointer; margin-left: 2px;
+    }
+    .chip.custom .chip-remove { display: flex; }
+
+    /* Custom tag input */
+    .chip-add-wrapper { display: flex; align-items: center; gap: 6px; }
+    .chip-add-input {
+      padding: 8px 14px; border: 1.5px dashed #ccc; border-radius: 100px;
+      font-size: 0.85rem; font-family: inherit; outline: none;
+      width: 140px; transition: all 0.2s; background: #fafafa;
+    }
+    .chip-add-input:focus { border-color: #e8544e; border-style: solid; background: white; }
+    .chip-add-input::placeholder { color: #bbb; }
+
+    /* Toggle */
+    .toggle-group {
+      display: flex; gap: 0; border: 1.5px solid #e0e0e5;
+      border-radius: 10px; overflow: hidden; width: fit-content;
+    }
+    .toggle-option {
+      padding: 10px 24px; cursor: pointer; font-size: 0.9rem; font-weight: 500;
+      transition: all 0.2s; border: none; background: white; font-family: inherit;
+    }
+    .toggle-option:first-child { border-right: 1px solid #e0e0e5; }
+    .toggle-option.selected { background: #1a1a2e; color: white; }
+
+    /* Phase cards */
+    .phase-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .phase-card {
+      border: 1.5px solid #e0e0e5; border-radius: 14px; padding: 18px 20px;
+      cursor: pointer; transition: all 0.2s; display: flex; align-items: flex-start; gap: 14px;
+    }
+    .phase-card:hover { border-color: #ccc; background: #fafafa; }
+    .phase-card.selected { border-color: #e8544e; background: #fef5f5; box-shadow: 0 0 0 3px rgba(232,84,78,0.08); }
+    .phase-emoji { font-size: 1.6rem; flex-shrink: 0; margin-top: 2px; }
+    .phase-emoji img { width: 56px; height: 56px; object-fit: contain; }
+    .phase-name { font-weight: 700; font-size: 0.95rem; margin-bottom: 2px; }
+    .phase-desc { font-size: 0.8rem; color: #888; line-height: 1.4; }
+
+    /* Summary */
+    .summary-section { background: #fafafa; border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+    .summary-section-title {
+      font-size: 0.8rem; font-weight: 600; color: #888; text-transform: uppercase;
+      letter-spacing: 0.5px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .summary-edit { color: #e8544e; font-size: 0.8rem; cursor: pointer; text-transform: none; letter-spacing: 0; font-weight: 500; }
+    .summary-edit:hover { text-decoration: underline; }
+    .summary-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 0.9rem; }
+    .summary-label { color: #888; }
+    .summary-value { font-weight: 500; text-align: right; max-width: 60%; }
+    .summary-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+    .summary-chip { background: #f0f0f3; padding: 3px 10px; border-radius: 100px; font-size: 0.8rem; }
+
+    /* AVG / Privacy */
+    .privacy-section {
+      background: #f8f9fc; border: 1px solid #e0e0e5; border-radius: 12px;
+      padding: 20px; margin-top: 8px;
+    }
+    .privacy-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 12px; }
+    .privacy-list { font-size: 0.8rem; color: #666; line-height: 1.8; margin-bottom: 16px; padding-left: 16px; }
+    .privacy-list li { margin-bottom: 2px; }
+    .checkbox-row {
+      display: flex; align-items: flex-start; gap: 10px; font-size: 0.85rem;
+      cursor: pointer; line-height: 1.5;
+    }
+    .checkbox-row input[type="checkbox"] {
+      width: 18px; height: 18px; margin-top: 2px; flex-shrink: 0;
+      accent-color: #e8544e; cursor: pointer;
+    }
+    .checkbox-row a { color: #e8544e; text-decoration: underline; }
+
+    /* Next steps cards */
+    .next-step-card {
+      border: 1.5px solid #e0e0e5; border-radius: 14px; padding: 20px;
+      margin-bottom: 12px; display: flex; align-items: flex-start; gap: 16px;
+      transition: all 0.2s; cursor: pointer;
+    }
+    .next-step-card:hover { border-color: #ccc; background: #fafafa; }
+    .next-step-icon { font-size: 1.5rem; flex-shrink: 0; }
+    .next-step-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
+    .next-step-desc { font-size: 0.8rem; color: #888; line-height: 1.4; }
+    .next-step-link {
+      color: #e8544e; font-size: 0.8rem; font-weight: 600;
+      margin-top: 6px; display: inline-block;
+    }
+
+    /* Preview card */
+    .preview-card {
+      border: 1.5px solid #e0e0e5; border-radius: 16px; overflow: hidden;
+      margin-bottom: 24px; background: white;
+    }
+    .preview-card-image {
+      width: 100%; height: 160px; background: linear-gradient(135deg, #fef5f5, #f0f0f3);
+      display: flex; align-items: center; justify-content: center;
+      color: #ccc; font-size: 2rem;
+    }
+    .preview-card-body { padding: 18px 20px; }
+    .preview-card-phase {
+      display: inline-block; background: #fef5f5; color: #e8544e;
+      padding: 3px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; margin-bottom: 8px;
+    }
+    .preview-card-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+    .preview-card-meta { font-size: 0.8rem; color: #888; }
+
+    /* Success screen */
+    .success-screen { padding: 10px 0; }
+    .success-header { text-align: center; margin-bottom: 28px; }
+    .success-icon { font-size: 3rem; margin-bottom: 12px; }
+    .success-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 6px; }
+    .success-desc { color: #888; font-size: 0.9rem; max-width: 420px; margin: 0 auto; line-height: 1.5; }
+
+    /* Tooltip */
+    .tooltip-trigger {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; border-radius: 50%; background: #e0e0e5;
+      color: #888; font-size: 0.65rem; font-weight: 700; cursor: help; position: relative;
+    }
+    .tooltip-trigger:hover .tooltip-text { display: block; }
+    .tooltip-text {
+      display: none; position: absolute; bottom: calc(100% + 8px); left: 50%;
+      transform: translateX(-50%); background: #1a1a2e; color: white;
+      padding: 8px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 400;
+      max-width: 240px; white-space: normal; line-height: 1.4; z-index: 10;
+    }
+
+    /* Modal footer */
+    .modal-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 28px; border-top: 1px solid #eee; flex-shrink: 0; background: white;
+    }
+    .btn-back {
+      display: flex; align-items: center; gap: 6px; padding: 10px 20px;
+      border: 1.5px solid #e0e0e5; border-radius: 10px; background: white;
+      font-size: 0.9rem; font-weight: 500; cursor: pointer; font-family: inherit;
+      color: #666; transition: all 0.2s;
+    }
+    .btn-back:hover { background: #f8f8fa; border-color: #ccc; }
+    .btn-back:disabled { opacity: 0; pointer-events: none; }
+    .btn-next {
+      display: flex; align-items: center; gap: 6px; padding: 12px 28px;
+      border: none; border-radius: 10px; background: #e8544e; color: white;
+      font-size: 0.95rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.2s;
+    }
+    .btn-next:hover { background: #d4433d; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(232,84,78,0.3); }
+    .btn-next:disabled { opacity: 0.5; pointer-events: none; }
+    .btn-skip {
+      background: none; border: none; color: #999; font-size: 0.85rem;
+      cursor: pointer; font-family: inherit; padding: 10px 16px; transition: color 0.2s;
+    }
+    .btn-skip:hover { color: #666; }
+    .footer-right { display: flex; align-items: center; gap: 12px; }
+
+    /* ===== DASHBOARD ===== */
+    .dashboard { display: flex; min-height: 100vh; background: #f6f6f6; padding: 24px; gap: 24px; }
+
+    .dash-sidebar {
+      width: 220px; background: #130f33; color: white;
+      flex-shrink: 0; display: flex; flex-direction: column;
+      border-radius: 15px; padding: 32px 8px;
+      position: sticky; top: 24px; align-self: flex-start;
+      height: calc(100vh - 48px);
+    }
+    .dash-sidebar-logo {
+      padding: 0 16px 28px; text-align: center;
+    }
+    .dash-sidebar-logo img { height: 22px; filter: brightness(0) invert(1); }
+    .dash-sidebar-section {
+      padding: 18px 16px 8px;
+      font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 1.2px; color: rgba(255,255,255,0.35);
+    }
+    .dash-sidebar-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px; margin: 2px 0; border-radius: 10px;
+      font-size: 1rem; cursor: pointer; transition: all 0.15s;
+      color: rgba(255,255,255,0.85); position: relative;
+    }
+    .dash-sidebar-item:hover { background: rgba(255,255,255,0.08); color: white; }
+    .dash-sidebar-item.active {
+      background: #fff; color: #130f33; font-weight: 500;
+      padding: 12px 16px;
+    }
+    .dash-sidebar-item .badge {
+      background: #e8544e; color: white; font-size: 0.7rem; font-weight: 700;
+      padding: 2px 7px; border-radius: 100px; margin-left: auto;
+    }
+    .dash-sidebar-bottom {
+      margin-top: auto; padding: 8px;
+    }
+    .dash-sidebar-bottom a {
+      color: rgba(255,255,255,0.4); font-size: 0.85rem; text-decoration: none;
+      padding: 10px 12px; display: block; border-radius: 10px; transition: all 0.15s;
+      background: rgba(255,255,255,0.06); text-align: center;
+    }
+    .dash-sidebar-bottom a:hover { color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.1); }
+
+    .dash-main {
+      flex: 1; padding: 0 32px 32px; min-height: calc(100vh - 48px);
+      max-width: 1240px;
+    }
+    .dash-body {
+      display: flex; gap: 24px; align-items: flex-start;
+    }
+    .dash-center {
+      flex: 1; min-width: 0;
+    }
+    .dash-right {
+      width: 290px; flex-shrink: 0;
+      background: white; border-radius: 16px; padding: 24px;
+      box-shadow: rgba(19, 15, 51, 0.06) 0px 2px 8px 0px, rgba(19, 15, 51, 0.04) 0px 1px 3px 0px;
+    }
+    .dash-right-section { margin-bottom: 24px; }
+    .dash-right-section h3 {
+      font-size: 1rem; font-weight: 700; color: #130f33; margin-bottom: 16px;
+    }
+    .dash-right-detail {
+      padding: 12px 0; border-bottom: 1px solid #f0f0f3;
+    }
+    .dash-right-detail:last-child { border-bottom: none; }
+    .dash-right-detail-label {
+      font-size: 0.78rem; font-weight: 600; color: #6b6580; margin-bottom: 4px;
+    }
+    .dash-right-detail-value {
+      font-size: 0.92rem; color: #130f33; font-weight: 500;
+    }
+    .dash-topbar {
+      display: flex; align-items: center; justify-content: flex-end;
+      padding: 16px 0 20px;
+    }
+    .dash-topbar-right { display: flex; align-items: center; gap: 12px; }
+    .dash-avatar {
+      width: 36px; height: 36px; border-radius: 50%; background: #e8544e;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-size: 0.8rem; font-weight: 700;
+    }
+    .dash-username { font-size: 0.9rem; font-weight: 500; }
+    .btn-dash {
+      padding: 10px 20px; border-radius: 10px; font-size: 0.85rem;
+      font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.2s;
+    }
+    .btn-dash-primary {
+      background: #e8544e; color: white; border: none;
+    }
+    .btn-dash-primary:hover { background: #d4433d; }
+    .btn-dash-outline {
+      background: white; color: #130f33; border: 1.5px solid #e0e0e5;
+    }
+    .btn-dash-outline:hover { border-color: #ccc; background: #fafafa; }
+
+    .dash-content { padding: 0; }
+    .dash-greeting { font-size: 1.6rem; font-weight: 800; margin-bottom: 4px; color: #130f33; }
+    .dash-greeting-sub { color: #888; font-size: 0.9rem; margin-bottom: 28px; }
+
+    /* Initiative list (overview) */
+    .dash-list { display: flex; flex-direction: column; gap: 12px; }
+    .dash-list-item {
+      display: flex; align-items: center; gap: 16px;
+      background: white; border-radius: 14px; padding: 14px 20px;
+      box-shadow: rgba(19, 15, 51, 0.04) 0px 1px 4px 0px;
+      cursor: pointer; transition: box-shadow 0.15s, transform 0.15s;
+      border: 1.5px solid transparent;
+    }
+    .dash-list-item:hover {
+      box-shadow: rgba(19, 15, 51, 0.10) 0px 4px 12px 0px;
+      border-color: #e0e0e5;
+    }
+    .dash-list-thumb {
+      width: 64px; height: 64px; border-radius: 10px;
+      background: #eee; flex-shrink: 0; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem;
+    }
+    .dash-list-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .dash-list-info { flex: 1; min-width: 0; }
+    .dash-list-name {
+      font-size: 1rem; font-weight: 700; color: #130f33;
+      margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .dash-list-meta {
+      font-size: 0.82rem; color: #6b6580;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+
+    /* Initiative card in dashboard (detail view) */
+    .dash-card {
+      background: white; border-radius: 16px; padding: 0;
+      box-shadow: rgba(19, 15, 51, 0.06) 0px 2px 8px 0px, rgba(19, 15, 51, 0.04) 0px 1px 3px 0px;
+      overflow: hidden; margin-bottom: 24px;
+    }
+    .dash-card-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      padding: 24px 28px 0;
+    }
+    .dash-card-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 6px; color: #130f33; }
+    .dash-card-meta { font-size: 0.82rem; color: #6b6580; display: flex; align-items: center; gap: 8px; }
+    .dash-card-meta span { display: flex; align-items: center; gap: 4px; }
+    .status-badge {
+      padding: 4px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 600;
+      display: inline-flex; align-items: center; white-space: nowrap;
+    }
+    .status-badge.review { background: rgba(232, 84, 78, 0.08); color: #e8544e; }
+    .status-badge.active { background: rgba(22, 163, 74, 0.08); color: #16a34a; }
+    .status-badge.concept { background: rgba(107, 101, 128, 0.08); color: #6b6580; }
+
+    /* Tabs */
+    .dash-tabs {
+      display: flex; gap: 0; padding: 16px 28px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .dash-tab {
+      padding: 10px 18px; font-size: 0.93rem; cursor: pointer;
+      border: none; background: none; font-family: inherit;
+      color: #6b6580; font-weight: 500; transition: all 0.15s;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .dash-tab:hover { color: #130f33; }
+    .dash-tab.active { color: #ff5c54; border-bottom-color: #ff5c54; font-weight: 700; }
+
+    .dash-tab-content { display: none; padding: 24px 28px; }
+    .dash-tab-content.active { display: block; }
+
+    /* Details sections */
+    .details-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .details-header a { color: #6b6580; font-size: 0.85rem; text-decoration: none; }
+    .details-header a:hover { color: #130f33; text-decoration: underline; }
+
+    .det-section { margin-bottom: 28px; }
+    .det-section-title {
+      font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 1px; color: #6b6580; margin-bottom: 14px;
+      padding-bottom: 8px; border-bottom: 1px solid #f0f0f3;
+    }
+    .det-field { margin-bottom: 16px; }
+    .det-field-label { font-size: 0.82rem; color: #6b6580; font-weight: 500; margin-bottom: 6px; }
+    .det-field-value { font-size: 0.9rem; color: #130f33; font-weight: 500; }
+
+    .dash-input, .dash-select {
+      width: 100%; padding: 10px 14px; border: 1.5px solid #e0e0e5;
+      border-radius: 10px; font-size: 0.9rem; font-family: inherit;
+      color: #130f33; background: white; transition: border-color 0.15s;
+    }
+    .dash-input:focus, .dash-select:focus { border-color: #e8544e; outline: none; }
+    .dash-select { appearance: auto; cursor: pointer; }
+    .dash-input::placeholder { color: #bbb; }
+    .det-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    /* Rich text editor */
+    .rich-editor-wrap {
+      border: 1.5px solid #e0e0e5; border-radius: 12px; overflow: hidden;
+      transition: border-color 0.15s;
+    }
+    .rich-editor-wrap:focus-within { border-color: #e8544e; }
+    .rich-toolbar {
+      display: flex; gap: 2px; padding: 6px 10px; background: #f8f8fa;
+      border-bottom: 1px solid #e0e0e5; flex-wrap: wrap;
+    }
+    .rich-toolbar button {
+      width: 32px; height: 32px; border: none; background: none;
+      border-radius: 6px; cursor: pointer; font-size: 0.8rem;
+      font-weight: 600; color: #6b6580; font-family: inherit;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.1s;
+    }
+    .rich-toolbar button:hover { background: #e8e8ec; color: #130f33; }
+    .rich-toolbar button.active { background: #130f33; color: white; }
+    .rich-toolbar .sep { width: 1px; background: #e0e0e5; margin: 4px 6px; }
+    .rich-editor {
+      min-height: 160px; padding: 14px 16px; font-size: 0.9rem;
+      line-height: 1.7; color: #130f33; outline: none;
+    }
+    .rich-editor:empty::before {
+      content: attr(data-placeholder); color: #bbb; pointer-events: none;
+    }
+    .rich-editor h2 { font-size: 1.1rem; margin: 8px 0 4px; }
+    .rich-editor h3 { font-size: 1rem; margin: 6px 0 2px; }
+    .rich-editor ul, .rich-editor ol { padding-left: 20px; margin: 4px 0; }
+    .rich-editor a { color: #e8544e; }
+
+    /* Dashboard chip groups */
+    .dash-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .dash-chip {
+      padding: 7px 16px; border: 1.5px solid #e0e0e5; border-radius: 100px;
+      font-size: 0.84rem; cursor: pointer; transition: all 0.15s;
+      background: white; user-select: none; display: flex; align-items: center; gap: 6px;
+    }
+    .dash-chip:hover { border-color: #ccc; background: #f8f8fa; }
+    .dash-chip.selected { border-color: #e8544e; background: #fef5f5; color: #e8544e; font-weight: 500; }
+    .dash-chip-add {
+      padding: 7px 14px; border: 1.5px dashed #ccc; border-radius: 100px;
+      font-size: 0.84rem; font-family: inherit; outline: none;
+      width: 130px; background: #fafafa; transition: all 0.15s;
+    }
+    .dash-chip-add:focus { border-color: #e8544e; border-style: solid; background: white; }
+    .dash-chip-add::placeholder { color: #bbb; }
+
+    /* Document grid */
+    .doc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .doc-item {
+      border: 1.5px solid #e0e0e5; border-radius: 12px; padding: 16px;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      position: relative; text-align: center;
+    }
+    .doc-item-icon { font-size: 1.8rem; }
+    .doc-item-name { font-size: 0.8rem; font-weight: 500; color: #130f33; word-break: break-all; }
+    .doc-item-size { font-size: 0.7rem; color: #6b6580; }
+    .doc-item-remove {
+      position: absolute; top: 6px; right: 6px; width: 20px; height: 20px;
+      border-radius: 50%; border: none; background: #fef2f2; color: #dc2626;
+      font-size: 0.7rem; cursor: pointer; display: flex; align-items: center;
+      justify-content: center;
+    }
+    .doc-item-remove:hover { background: #fecaca; }
+    .doc-upload {
+      border: 2px dashed #ddd; border-radius: 12px; padding: 16px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.2s; background: #fafafa;
+      color: #bbb; font-size: 0.8rem; gap: 4px; min-height: 100px;
+    }
+    .doc-upload:hover { border-color: #e8544e; background: #fef5f5; color: #e8544e; }
+    .doc-upload-icon { font-size: 1.5rem; }
+
+    /* Photos tab */
+    .photo-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+    }
+    .photo-item {
+      aspect-ratio: 4/3; border-radius: 12px; overflow: hidden;
+      background: #f0f0f3; position: relative;
+    }
+    .photo-item img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-item.main::after {
+      content: 'Hoofdfoto'; position: absolute; top: 8px; left: 8px;
+      background: #1a1a2e; color: white; padding: 3px 10px; border-radius: 6px;
+      font-size: 0.7rem; font-weight: 600;
+    }
+    .photo-upload {
+      aspect-ratio: 4/3; border: 2px dashed #ddd; border-radius: 12px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.2s; background: #fafafa;
+      color: #bbb; font-size: 0.8rem; gap: 6px;
+    }
+    .photo-upload:hover { border-color: #e8544e; background: #fef5f5; color: #e8544e; }
+    .photo-upload-icon { font-size: 1.8rem; }
+    .photo-hint { font-size: 0.8rem; color: #999; margin-top: 16px; }
+
+    /* Instellingen */
+    .settings-section { margin-bottom: 28px; }
+    .settings-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+    .settings-subtitle { font-size: 0.8rem; color: #888; margin-bottom: 16px; }
+    .settings-check {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 14px 16px; background: #fafafa; border-radius: 10px;
+      margin-bottom: 8px; cursor: pointer;
+    }
+    .settings-check input[type="checkbox"] {
+      width: 18px; height: 18px; margin-top: 2px; flex-shrink: 0;
+      accent-color: #e8544e; cursor: pointer;
+    }
+    .settings-check-label { font-size: 0.9rem; font-weight: 500; }
+    .settings-check-desc { font-size: 0.8rem; color: #888; margin-top: 2px; }
+
+    .intake-card {
+      border: 1.5px solid #e0e0e5; border-radius: 14px; padding: 20px;
+      display: flex; align-items: flex-start; gap: 16px;
+      transition: all 0.2s; cursor: pointer;
+    }
+    .intake-card:hover { border-color: #ccc; background: #fafafa; }
+    .intake-icon { font-size: 1.5rem; flex-shrink: 0; }
+    .intake-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
+    .intake-desc { font-size: 0.8rem; color: #888; line-height: 1.4; }
+    .intake-link { color: #e8544e; font-size: 0.8rem; font-weight: 600; margin-top: 6px; display: inline-block; }
+
+    .danger-zone {
+      border: 1px solid #fecaca; border-radius: 12px; padding: 20px;
+      background: #fef2f2;
+    }
+    .danger-title { color: #dc2626; font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+    .danger-desc { font-size: 0.8rem; color: #888; margin-bottom: 12px; }
+    .btn-danger {
+      padding: 8px 20px; border: 1.5px solid #fca5a5; border-radius: 8px;
+      background: white; color: #dc2626; font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; font-family: inherit; transition: all 0.15s;
+    }
+    .btn-danger:hover { background: #fef2f2; border-color: #dc2626; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .modal { max-height: 95vh; width: 95vw; height: 90vh; }
+      .step-content-wrapper { padding: 24px 20px; }
+      .phase-cards { grid-template-columns: 1fr; }
+      .two-col { grid-template-columns: 1fr !important; }
+      .dashboard.active { padding: 12px; gap: 12px; }
+      .dash-sidebar { display: none; }
+      .dash-main { margin-left: 0; padding: 0 16px 16px; }
+      .dash-right { display: none !important; }
+      .dash-body { flex-direction: column; }
+      .photo-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== LANDING ===== -->
+  <div class="landing" id="landing">
+    <img src="ASSETS/CB logo.svg" alt="CrowdBuilding" style="height:40px;margin-bottom:1rem;">
+    <p>Start jouw wooninitiatief en vind gelijkgestemden</p>
+    <button class="btn-start" onclick="openModal()">+ Initiatief aanmaken</button>
+  </div>
+
+  <!-- ===== MODAL ===== -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <img src="ASSETS/CB logo.svg" alt="CB" style="height:22px;">
+          <h2>Initiatief aanmaken</h2>
+        </div>
+        <div style="display:flex;align-items:center;">
+          <div class="autosave" id="autosave" style="display:none;">
+            <div class="autosave-dot"></div>
+            Automatisch opgeslagen
+          </div>
+          <button class="btn-close" onclick="closeModal()">&times;</button>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div class="sidebar">
+          <ul class="sidebar-steps">
+            <li class="sidebar-step active" data-step="0" onclick="goToStep(0)">
+              <div class="step-number">1</div><span>Overzicht</span>
+            </li>
+            <li class="sidebar-step" data-step="1" onclick="goToStep(1)">
+              <div class="step-number">2</div><span>Bouwen & wonen</span>
+            </li>
+            <li class="sidebar-step" data-step="2" onclick="goToStep(2)">
+              <div class="step-number">3</div><span>Omvang & locatie</span>
+            </li>
+            <li class="sidebar-step" data-step="3" onclick="goToStep(3)">
+              <div class="step-number">4</div><span>Contact</span>
+            </li>
+            <li class="sidebar-step" data-step="4" onclick="goToStep(4)">
+              <div class="step-number">5</div><span>Controleren</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="step-content-wrapper">
+
+          <!-- Step 0: Overzicht -->
+          <div class="step-content active" data-step="0">
+            <div class="step-title">Over je initiatief</div>
+            <div class="step-subtitle">Vertel iets over je initiatief zodat anderen het kunnen vinden.</div>
+
+            <div class="form-group">
+              <label class="form-label">Initiatiefnaam <span class="required">*</span></label>
+              <input type="text" class="form-input" id="initiatiefNaam" placeholder="Bijv. Samen Groen Wonen Amsterdam" maxlength="80">
+              <div class="form-error" id="naamError">Vul een naam in voor je initiatief</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">In welke fase zit je initiatief? <span class="required">*</span></label>
+              <div class="form-hint">Dit helpt ons de juiste informatie en tools te tonen</div>
+              <div class="phase-cards" id="phaseCards">
+                <div class="phase-card" onclick="selectPhase(this, 'Ideefase')">
+                  <div class="phase-emoji"><img src="ASSETS/1 Ideefase.png" alt=""></div>
+                  <div><div class="phase-name">Ideefase</div><div class="phase-desc">Je hebt een eerste idee dat je met anderen wil delen.</div></div>
+                </div>
+                <div class="phase-card" onclick="selectPhase(this, 'Locatiefase')">
+                  <div class="phase-emoji"><img src="ASSETS/2 Locatiefase.png" alt=""></div>
+                  <div><div class="phase-name">Locatiefase</div><div class="phase-desc">Je zoekt samen met je groep naar een locatie.</div></div>
+                </div>
+                <div class="phase-card" onclick="selectPhase(this, 'Ontwerpfase')">
+                  <div class="phase-emoji"><img src="ASSETS/3 Ontwerpfase.png" alt=""></div>
+                  <div><div class="phase-name">Ontwerpfase</div><div class="phase-desc">Je werkt samen aan het ontwerp van jullie woningen.</div></div>
+                </div>
+                <div class="phase-card" onclick="selectPhase(this, 'Bouwfase')">
+                  <div class="phase-emoji"><img src="ASSETS/5 bouwfase.png" alt=""></div>
+                  <div><div class="phase-name">Bouwfase</div><div class="phase-desc">De bouw is gestart en jouw woondroom wordt gerealiseerd.</div></div>
+                </div>
+                <div class="phase-card" onclick="selectPhase(this, 'Woonfase')">
+                  <div class="phase-emoji"><img src="ASSETS/6 Woonfase.png" alt=""></div>
+                  <div><div class="phase-name">Woonfase</div><div class="phase-desc">Je woont in een gerealiseerd project en wil anderen inspireren.</div></div>
+                </div>
+              </div>
+              <div class="form-error" id="faseError">Selecteer de fase van je initiatief</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Slogan</label>
+              <div class="form-hint">Een korte pakkende zin die je initiatief beschrijft</div>
+              <input type="text" class="form-input" id="sloganInput" placeholder="Bijv. Duurzaam en betaalbaar wonen in de stad" maxlength="120">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Afbeelding</label>
+              <div class="form-hint">Een afbeelding die bij je initiatief past (je kunt dit later ook doen)</div>
+              <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                <div class="upload-icon">📷</div>
+                <div class="upload-text">Klik om een afbeelding te uploaden of <strong>sleep deze hierheen</strong></div>
+                <div class="upload-formats">JPG, PNG of WebP - max. 5MB</div>
+              </div>
+              <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.webp" style="display:none" onchange="handleUpload(this)">
+              <div class="form-error" id="uploadError"></div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Woondroom / Visie</label>
+              <div class="form-hint">Beschrijf wat je voor ogen hebt. Wat maakt dit initiatief bijzonder?</div>
+              <textarea class="form-input" id="visieInput" placeholder="Wij dromen van een plek waar..." rows="5"></textarea>
+            </div>
+          </div>
+
+          <!-- Step 1: Bouwen & wonen -->
+          <div class="step-content" data-step="1">
+            <div class="step-title">Hoe wil je bouwen en wonen?</div>
+            <div class="step-subtitle">Selecteer wat past bij je initiatief. Je kunt dit later altijd aanpassen.</div>
+
+            <div class="form-group">
+              <label class="form-label">Ontwikkelvorm</label>
+              <div class="form-hint">Kies de juridische/organisatorische vorm</div>
+              <div class="chip-group" id="ontwikkelvormChips">
+                <div class="chip" onclick="selectChip(this, 'ontwikkelvorm', true)">
+                  CPO
+                  <span class="tooltip-trigger">?<span class="tooltip-text">Collectief Particulier Opdrachtgeverschap: je bouwt samen met een groep je eigen woningen.</span></span>
+                </div>
+                <div class="chip" onclick="selectChip(this, 'ontwikkelvorm', true)">
+                  CLT
+                  <span class="tooltip-trigger">?<span class="tooltip-text">Community Land Trust: de grond is collectief eigendom, je koopt alleen de woning.</span></span>
+                </div>
+                <div class="chip" onclick="selectChip(this, 'ontwikkelvorm', true)">
+                  MO
+                  <span class="tooltip-trigger">?<span class="tooltip-text">Mede-opdrachtgeverschap: je bouwt samen met een ontwikkelaar.</span></span>
+                </div>
+                <div class="chip" onclick="selectChip(this, 'ontwikkelvorm', true)">
+                  Wooncoöperatie
+                  <span class="tooltip-trigger">?<span class="tooltip-text">Een coöperatie die samen woningen bezit en beheert. Bewoners zijn lid.</span></span>
+                </div>
+                <div class="chip" onclick="selectChip(this, 'ontwikkelvorm', true)">Woongroep</div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Doelgroepen</label>
+              <div class="form-hint">Voor wie is dit initiatief bedoeld? (meerdere mogelijk)</div>
+              <div class="chip-group" id="doelgroepChips">
+                <div class="chip" onclick="selectChip(this, 'doelgroep')">Starters</div>
+                <div class="chip" onclick="selectChip(this, 'doelgroep')">Gezinnen</div>
+                <div class="chip" onclick="selectChip(this, 'doelgroep')">Senioren</div>
+                <div class="chip" onclick="selectChip(this, 'doelgroep')">Singles</div>
+                <div class="chip" onclick="selectChip(this, 'doelgroep')">Eenoudergezinnen</div>
+                <div class="chip" onclick="selectChip(this, 'doelgroep')">Iedereen</div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Woonvormen</label>
+              <div class="form-hint">Welk type woonproject heb je voor ogen? (meerdere mogelijk)</div>
+              <div class="chip-group" id="woonvormChips">
+                <div class="chip" onclick="selectChip(this, 'woonvorm')">Generatie Mix</div>
+                <div class="chip" onclick="selectChip(this, 'woonvorm')">Eco dorp</div>
+                <div class="chip" onclick="selectChip(this, 'woonvorm')">Creative Community</div>
+                <div class="chip" onclick="selectChip(this, 'woonvorm')">Tiny Houses</div>
+                <div class="chip" onclick="selectChip(this, 'woonvorm')">Knarrenhof</div>
+                <div class="chip" onclick="selectChip(this, 'woonvorm')">Drijvende wijk</div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Interesses</label>
+              <div class="form-hint">Wat vinden jullie belangrijk? (meerdere mogelijk, typ om eigen tag toe te voegen)</div>
+              <div class="chip-group" id="interesseChips">
+                <div class="chip" onclick="selectChip(this, 'interesse')">Community</div>
+                <div class="chip" onclick="selectChip(this, 'interesse')">Duurzaamheid</div>
+                <div class="chip" onclick="selectChip(this, 'interesse')">Collectieve ruimtes</div>
+                <div class="chip" onclick="selectChip(this, 'interesse')">Auto delen</div>
+                <div class="chip" onclick="selectChip(this, 'interesse')">Creatief</div>
+                <div class="chip" onclick="selectChip(this, 'interesse')">Natuur</div>
+                <div class="chip-add-wrapper">
+                  <input type="text" class="chip-add-input" id="customInteresse" placeholder="+ Eigen tag..." maxlength="30"
+                    onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomChip('interesseChips','interesse')}">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2: Omvang & locatie -->
+          <div class="step-content" data-step="2">
+            <div class="step-title">Omvang & locatie</div>
+            <div class="step-subtitle">Geef aan hoe groot je project wordt en waar het zich bevindt.</div>
+
+            <div class="form-group">
+              <label class="form-label">Ben je op zoek naar leden?</label>
+              <div class="toggle-group">
+                <button class="toggle-option selected" onclick="selectToggle(this)">Ja</button>
+                <button class="toggle-option" onclick="selectToggle(this)">Nee</button>
+              </div>
+            </div>
+
+            <div class="two-col" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+              <div class="form-group">
+                <label class="form-label">Aantal woningen</label>
+                <select class="form-select" id="aantalSelect">
+                  <option value="">Niet gespecificeerd</option>
+                  <option>1-5</option><option>6-10</option><option>11-20</option>
+                  <option>21-50</option><option>51-100</option><option>100+</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Vierkante meters (BVO)</label>
+                <input type="number" class="form-input" id="bvoInput" placeholder="Bijv. 2500">
+              </div>
+            </div>
+
+            <div class="two-col" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+              <div class="form-group">
+                <label class="form-label">Provincie <span class="required">*</span></label>
+                <select class="form-select" id="provincieSelect">
+                  <option value="">Selecteer een provincie</option>
+                  <option>Drenthe</option><option>Flevoland</option><option>Friesland</option>
+                  <option>Gelderland</option><option>Groningen</option><option>Limburg</option>
+                  <option>Noord-Brabant</option><option>Noord-Holland</option><option>Overijssel</option>
+                  <option>Utrecht</option><option>Zeeland</option><option>Zuid-Holland</option>
+                </select>
+                <div class="form-error" id="provincieError">Selecteer een provincie</div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Plaats</label>
+                <input type="text" class="form-input" id="plaatsInput" placeholder="Bijv. Amsterdam">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Indicatie budget per woning</label>
+              <div class="form-hint">Een ruwe indicatie helpt bij het vinden van gelijkgestemden</div>
+              <select class="form-select" id="budgetSelect">
+                <option value="">Nog niet bekend</option>
+                <option>&lt; €150.000</option><option>€150.000 - €250.000</option>
+                <option>€250.000 - €400.000</option><option>€400.000 - €600.000</option>
+                <option>&gt; €600.000</option><option>Huur</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Step 3: Contact + AVG -->
+          <div class="step-content" data-step="3">
+            <div class="step-title">Contactgegevens</div>
+            <div class="step-subtitle">Hoe kunnen geïnteresseerden je bereiken?</div>
+
+            <div style="background:#f0fdf4;border-radius:10px;padding:12px 16px;margin-bottom:24px;font-size:0.85rem;color:#16a34a;display:flex;align-items:center;gap:8px;">
+              <span>✓</span>
+              Deze gegevens zijn ingevuld vanuit je accountprofiel. Je kunt ze hieronder aanpassen.
+            </div>
+
+            <div class="two-col" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+              <div class="form-group">
+                <label class="form-label">Voornaam</label>
+                <input type="text" class="form-input" id="voornaamInput" value="Tjeerd">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Achternaam</label>
+                <input type="text" class="form-input" id="achternaamInput" value="Haccou">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">E-mailadres</label>
+              <input type="email" class="form-input" id="emailInput" value="tjeerd@crowdbuilding.com">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Telefoonnummer</label>
+              <div class="form-hint">Optioneel - wordt niet publiek getoond</div>
+              <input type="tel" class="form-input" id="telefoonInput" placeholder="06-12345678">
+            </div>
+
+            <div class="privacy-section">
+              <div class="privacy-title">Privacy & gegevensbescherming (AVG)</div>
+              <ul class="privacy-list">
+                <li>Je naam, e-mailadres en telefoonnummer worden gebruikt om je initiatief te tonen op CrowdBuilding en om geïnteresseerden met je in contact te brengen.</li>
+                <li>Je e-mailadres en telefoonnummer worden <strong>niet</strong> publiek getoond, tenzij je dit zelf instelt.</li>
+                <li>Je gegevens worden bewaard zolang je initiatief actief is. Je kunt je gegevens op elk moment inzien, wijzigen of verwijderen via je accountinstellingen.</li>
+                <li>Wij delen je gegevens niet met derden zonder je toestemming.</li>
+              </ul>
+              <label class="checkbox-row">
+                <input type="checkbox" id="privacyConsent">
+                <span>Ik ga akkoord met de <a href="#" onclick="event.preventDefault()">privacyverklaring</a> en geef toestemming voor het verwerken van mijn gegevens zoals hierboven beschreven. <span style="color:#e8544e;">*</span></span>
+              </label>
+              <div class="form-error" id="privacyError" style="margin-left:28px;">Je moet akkoord gaan met de privacyverklaring</div>
+            </div>
+          </div>
+
+          <!-- Step 4: Controleren -->
+          <div class="step-content" data-step="4">
+            <div class="step-title">Controleer je initiatief</div>
+            <div class="step-subtitle">Bekijk hoe je initiatief eruit ziet en controleer de gegevens.</div>
+
+            <div class="form-group">
+              <label class="form-label" style="margin-bottom:12px;">Voorbeeld van je initiatiefpagina</label>
+              <div class="preview-card">
+                <div class="preview-card-image" id="previewImage">📷</div>
+                <div class="preview-card-body">
+                  <div class="preview-card-phase" id="previewPhase">Ideefase</div>
+                  <div class="preview-card-title" id="previewTitle">-</div>
+                  <div class="preview-card-meta" id="previewMeta">📍 - &nbsp;&middot;&nbsp; 👤 Tjeerd Haccou</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="summary-section">
+              <div class="summary-section-title">Overzicht <span class="summary-edit" onclick="goToStep(0)">Bewerken</span></div>
+              <div class="summary-row"><span class="summary-label">Fase</span><span class="summary-value" id="sumFase">-</span></div>
+              <div class="summary-row"><span class="summary-label">Naam</span><span class="summary-value" id="sumNaam">-</span></div>
+              <div class="summary-row"><span class="summary-label">Afbeelding</span><span class="summary-value" id="sumImage">Niet geüpload (optioneel)</span></div>
+            </div>
+            <div class="summary-section">
+              <div class="summary-section-title">Bouwen & Wonen <span class="summary-edit" onclick="goToStep(1)">Bewerken</span></div>
+              <div class="summary-row"><span class="summary-label">Ontwikkelvorm</span><span class="summary-value" id="sumOntwikkelvorm">-</span></div>
+              <div class="summary-row"><span class="summary-label">Doelgroepen</span><div class="summary-chips" id="sumDoelgroepen"><span style="color:#999;font-size:0.85rem;">-</span></div></div>
+            </div>
+            <div class="summary-section">
+              <div class="summary-section-title">Omvang & Locatie <span class="summary-edit" onclick="goToStep(2)">Bewerken</span></div>
+              <div class="summary-row"><span class="summary-label">Provincie</span><span class="summary-value" id="sumProvincie">-</span></div>
+              <div class="summary-row"><span class="summary-label">Op zoek naar leden</span><span class="summary-value" id="sumLeden">Ja</span></div>
+            </div>
+            <div class="summary-section">
+              <div class="summary-section-title">Contactpersoon <span class="summary-edit" onclick="goToStep(3)">Bewerken</span></div>
+              <div class="summary-row"><span class="summary-label">Naam</span><span class="summary-value" id="sumContact">Tjeerd Haccou</span></div>
+              <div class="summary-row"><span class="summary-label">E-mail</span><span class="summary-value" id="sumEmail">tjeerd@crowdbuilding.com</span></div>
+            </div>
+          </div>
+
+          <!-- Step 5: Success -->
+          <div class="step-content" data-step="5">
+            <div class="success-screen">
+              <div class="success-header">
+                <div class="success-icon">🎉</div>
+                <div class="success-title">Je initiatief is aangemaakt!</div>
+                <div class="success-desc">
+                  Je initiatief staat nu als concept in je dashboard. Vul je pagina verder aan met foto's en details, en publiceer wanneer je klaar bent. CrowdBuilding bekijkt je pagina vervolgens even voordat deze zichtbaar wordt.
+                </div>
+              </div>
+
+              <div class="next-step-card" onclick="showDashboard()">
+                <div class="next-step-icon">📝</div>
+                <div>
+                  <div class="next-step-title">Ga naar je dashboard</div>
+                  <div class="next-step-desc">Vul je pagina verder aan met foto's, details en kenmerken. Publiceer je initiatief wanneer je er klaar voor bent.</div>
+                  <div class="next-step-link">Naar dashboard →</div>
+                </div>
+              </div>
+
+              <div class="next-step-card" onclick="">
+                <div class="next-step-icon">👀</div>
+                <div>
+                  <div class="next-step-title">Voorbeeld bekijken</div>
+                  <div class="next-step-desc">Bekijk hoe je initiatiefpagina eruit ziet voor bezoekers.</div>
+                  <div class="next-step-link">Bekijk voorbeeld →</div>
+                </div>
+              </div>
+
+              <div class="next-step-card" onclick="">
+                <div class="next-step-icon">☕</div>
+                <div>
+                  <div class="next-step-title">Intake gesprek inplannen</div>
+                  <div class="next-step-desc">Maak persoonlijk kennis met ons team. We helpen je op weg met advies over je initiatief, subsidies en volgende stappen.</div>
+                  <div class="next-step-link">Plan een gesprek →</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="modal-footer" id="modalFooter">
+        <button class="btn-back" id="btnBack" onclick="prevStep()" disabled>← Terug</button>
+        <div class="footer-right">
+          <button class="btn-skip" id="btnSkip" onclick="skipStep()" style="display:none;">Overslaan</button>
+          <button class="btn-next" id="btnNext" onclick="nextStep()">Ga verder →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== DASHBOARD ===== -->
+  <div class="dashboard" id="dashboard">
+    <aside class="dash-sidebar">
+      <div class="dash-sidebar-logo">
+        <img src="ASSETS/CB logo.svg" alt="CrowdBuilding">
+      </div>
+      <div class="dash-sidebar-section">Dashboard</div>
+      <div class="dash-sidebar-item active">
+        Mijn initiatieven
+      </div>
+      <div class="dash-sidebar-item">
+        Berichten <span class="badge">5</span>
+      </div>
+      <div class="dash-sidebar-section">Account</div>
+      <div class="dash-sidebar-item">
+        Notificaties
+      </div>
+      <div class="dash-sidebar-bottom">
+        <a href="#">Terug naar Prikbord</a>
+      </div>
+    </aside>
+
+    <div class="dash-main">
+      <div class="dash-topbar">
+        <div></div>
+        <div class="dash-topbar-right">
+          <button class="btn-dash btn-dash-primary" onclick="openModal()">+ Nieuw initiatief</button>
+          <button class="btn-dash btn-dash-outline">Ontdek</button>
+          <div class="dash-avatar" id="dashAvatar">TH</div>
+          <span class="dash-username" id="dashUsername">Tjeerd</span>
+        </div>
+      </div>
+
+      <div class="dash-content">
+        <div class="dash-greeting">Hallo, <span id="dashGreetName">Tjeerd</span></div>
+        <div class="dash-greeting-sub">Beheer je initiatieven op CrowdBuilding</div>
+
+        <div class="dash-body">
+        <div class="dash-center">
+
+        <!-- Initiative list (overview) -->
+        <div class="dash-list" id="dashList">
+          <div class="dash-list-item" onclick="openInitiativeDetail(0)">
+            <div class="dash-list-thumb"><img src="https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=128&h=128&fit=crop" alt=""></div>
+            <div class="dash-list-info">
+              <div class="dash-list-name">Wooncoöperatie De Warren</div>
+              <div class="dash-list-meta">
+                <span>📍 Amsterdam, Noord-Holland</span>
+                <span>·</span>
+                <span>Ontwerpfase</span>
+              </div>
+            </div>
+            <div class="status-badge active">Actief</div>
+          </div>
+          <div class="dash-list-item" onclick="openInitiativeDetail(1)">
+            <div class="dash-list-thumb"><img src="https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=128&h=128&fit=crop" alt=""></div>
+            <div class="dash-list-info">
+              <div class="dash-list-name">Tiny Houses Alkmaar</div>
+              <div class="dash-list-meta">
+                <span>📍 Alkmaar, Noord-Holland</span>
+                <span>·</span>
+                <span>Ideefase</span>
+              </div>
+            </div>
+            <div class="status-badge concept">Concept</div>
+          </div>
+        </div>
+
+        <!-- Initiative detail card (hidden until a list item is clicked) -->
+        <div class="dash-card" id="dashInitiativeCard" style="display:none;">
+          <div style="padding:16px 28px 0;">
+            <a href="#" onclick="backToList(); return false;" style="font-size:0.85rem;color:#6b6580;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">← Mijn initiatieven</a>
+          </div>
+          <div class="dash-card-header">
+            <div>
+              <div class="dash-card-title" id="dashCardTitle">-</div>
+              <div class="dash-card-meta">
+                <span id="dashCardLocation">📍 -</span>
+                <span>·</span>
+                <span id="dashCardFase">-</span>
+                <span>·</span>
+                <span>Zojuist aangemaakt</span>
+              </div>
+            </div>
+            <div class="status-badge concept">Concept</div>
+          </div>
+
+          <div class="dash-tabs">
+            <button class="dash-tab active" onclick="switchDashTab(this, 'details')">Details</button>
+            <button class="dash-tab" onclick="switchDashTab(this, 'photos')">Foto's</button>
+            <button class="dash-tab" onclick="switchDashTab(this, 'settings')">Instellingen</button>
+          </div>
+
+          <!-- Details tab -->
+          <div class="dash-tab-content active" id="tab-details">
+            <div class="details-header">
+              <a href="#">Bekijk op CrowdBuilding ↗</a>
+            </div>
+
+            <!-- Beschrijving -->
+            <div class="det-section">
+              <div class="det-section-title">Beschrijving</div>
+              <div class="det-field">
+                <div class="det-field-label">Naam</div>
+                <input class="dash-input" id="detNaam" value="" placeholder="Naam van je initiatief">
+              </div>
+              <div class="det-field">
+                <div class="det-field-label">Slogan</div>
+                <input class="dash-input" id="detSlogan" value="" placeholder="Een korte pakkende zin">
+              </div>
+              <div class="det-field">
+                <div class="det-field-label">Woondroom / Visie</div>
+                <div class="rich-editor-wrap">
+                  <div class="rich-toolbar">
+                    <button onclick="execRich('bold')" title="Vet"><b>B</b></button>
+                    <button onclick="execRich('italic')" title="Cursief"><i>I</i></button>
+                    <div class="sep"></div>
+                    <button onclick="execRich('insertUnorderedList')" title="Opsomming">&#8226;</button>
+                    <button onclick="execRich('insertOrderedList')" title="Nummering">1.</button>
+                    <div class="sep"></div>
+                    <button onclick="execRich('formatBlock','h2')" title="Kop">H2</button>
+                    <button onclick="execRich('formatBlock','h3')" title="Subkop">H3</button>
+                    <div class="sep"></div>
+                    <button onclick="execRichLink()" title="Link">🔗</button>
+                  </div>
+                  <div class="rich-editor" id="detVisie" contenteditable="true" data-placeholder="Beschrijf je woondroom en visie. Wat maakt dit initiatief bijzonder?"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Kenmerken -->
+            <div class="det-section">
+              <div class="det-section-title">Kenmerken</div>
+              <div class="det-field">
+                <div class="det-field-label">Fase</div>
+                <select class="dash-select" id="detFase" style="max-width:240px;">
+                  <option value="">— Selecteer fase —</option>
+                  <option value="Ideefase">Ideefase</option>
+                  <option value="Locatiefase">Locatiefase</option>
+                  <option value="Ontwerpfase">Ontwerpfase</option>
+                  <option value="Bouwfase">Bouwfase</option>
+                  <option value="Woonfase">Woonfase</option>
+                </select>
+              </div>
+              <div class="det-field">
+                <div class="det-field-label">Ontwikkelvorm</div>
+                <div class="dash-chips" id="dashOntwikkelvormChips">
+                  <div class="dash-chip" onclick="dashChip(this,'ontwikkelvorm',true)">CPO</div>
+                  <div class="dash-chip" onclick="dashChip(this,'ontwikkelvorm',true)">CLT</div>
+                  <div class="dash-chip" onclick="dashChip(this,'ontwikkelvorm',true)">MO</div>
+                  <div class="dash-chip" onclick="dashChip(this,'ontwikkelvorm',true)">Wooncoöperatie</div>
+                  <div class="dash-chip" onclick="dashChip(this,'ontwikkelvorm',true)">Woongroep</div>
+                </div>
+              </div>
+              <div class="det-field">
+                <div class="det-field-label">Doelgroepen</div>
+                <div class="dash-chips" id="dashDoelgroepChips">
+                  <div class="dash-chip" onclick="dashChip(this,'doelgroepen')">Starters</div>
+                  <div class="dash-chip" onclick="dashChip(this,'doelgroepen')">Gezinnen</div>
+                  <div class="dash-chip" onclick="dashChip(this,'doelgroepen')">Senioren</div>
+                  <div class="dash-chip" onclick="dashChip(this,'doelgroepen')">Singles</div>
+                  <div class="dash-chip" onclick="dashChip(this,'doelgroepen')">Eenoudergezinnen</div>
+                  <div class="dash-chip" onclick="dashChip(this,'doelgroepen')">Iedereen</div>
+                </div>
+              </div>
+              <div class="det-field">
+                <div class="det-field-label">Woonvormen</div>
+                <div class="dash-chips" id="dashWoonvormChips">
+                  <div class="dash-chip" onclick="dashChip(this,'woonvormen')">Generatie Mix</div>
+                  <div class="dash-chip" onclick="dashChip(this,'woonvormen')">Eco dorp</div>
+                  <div class="dash-chip" onclick="dashChip(this,'woonvormen')">Creative Community</div>
+                  <div class="dash-chip" onclick="dashChip(this,'woonvormen')">Tiny Houses</div>
+                  <div class="dash-chip" onclick="dashChip(this,'woonvormen')">Knarrenhof</div>
+                  <div class="dash-chip" onclick="dashChip(this,'woonvormen')">Drijvende wijk</div>
+                </div>
+              </div>
+              <div class="det-field">
+                <div class="det-field-label">Interesses</div>
+                <div class="dash-chips" id="dashInteresseChips">
+                  <div class="dash-chip" onclick="dashChip(this,'interesses')">Community</div>
+                  <div class="dash-chip" onclick="dashChip(this,'interesses')">Duurzaamheid</div>
+                  <div class="dash-chip" onclick="dashChip(this,'interesses')">Collectieve ruimtes</div>
+                  <div class="dash-chip" onclick="dashChip(this,'interesses')">Auto delen</div>
+                  <div class="dash-chip" onclick="dashChip(this,'interesses')">Creatief</div>
+                  <div class="dash-chip" onclick="dashChip(this,'interesses')">Natuur</div>
+                  <input class="dash-chip-add" placeholder="+ Eigen tag..." onkeydown="if(event.key==='Enter'){addDashChip(this,'interesses')}">
+                </div>
+              </div>
+            </div>
+
+            <!-- Locatie & omvang -->
+            <div class="det-section">
+              <div class="det-section-title">Locatie & omvang</div>
+              <div class="det-row">
+                <div class="det-field">
+                  <div class="det-field-label">Provincie</div>
+                  <select class="dash-select" id="detProvincie">
+                    <option value="">— Selecteer —</option>
+                    <option>Drenthe</option><option>Flevoland</option><option>Friesland</option>
+                    <option>Gelderland</option><option>Groningen</option><option>Limburg</option>
+                    <option>Noord-Brabant</option><option>Noord-Holland</option><option>Overijssel</option>
+                    <option>Utrecht</option><option>Zeeland</option><option>Zuid-Holland</option>
+                  </select>
+                </div>
+                <div class="det-field">
+                  <div class="det-field-label">Plaats</div>
+                  <input class="dash-input" id="detPlaats" placeholder="Bijv. Amsterdam">
+                </div>
+              </div>
+              <div class="det-row">
+                <div class="det-field">
+                  <div class="det-field-label">Aantal woningen</div>
+                  <select class="dash-select" id="detAantal">
+                    <option value="">Niet gespecificeerd</option>
+                    <option>1-5</option><option>6-10</option><option>11-20</option>
+                    <option>21-50</option><option>51-100</option><option>100+</option>
+                  </select>
+                </div>
+                <div class="det-field">
+                  <div class="det-field-label">Budget per woning</div>
+                  <select class="dash-select" id="detBudget">
+                    <option value="">Nog niet bekend</option>
+                    <option>&lt; €150.000</option><option>€150.000 - €250.000</option>
+                    <option>€250.000 - €400.000</option><option>€400.000 - €600.000</option>
+                    <option>&gt; €600.000</option><option>Huur</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Documenten -->
+            <div class="det-section">
+              <div class="det-section-title">Documenten</div>
+              <div class="doc-grid" id="docGrid">
+                <div class="doc-upload" onclick="document.getElementById('dashDocInput').click()">
+                  <div class="doc-upload-icon">+</div>
+                  <div>Document toevoegen</div>
+                </div>
+              </div>
+              <input type="file" id="dashDocInput" accept=".pdf,.doc,.docx,.xls,.xlsx" style="display:none" multiple onchange="handleDocUpload(this)">
+              <div style="font-size:0.78rem;color:#999;margin-top:10px;">PDF, DOC, DOCX, XLS, XLSX — max. 5 documenten</div>
+            </div>
+
+            <!-- Contact -->
+            <div class="det-section">
+              <div class="det-section-title">Contact</div>
+              <div class="det-field">
+                <div class="det-field-label">Naam</div>
+                <div class="det-field-value" id="detContactNaam">Tjeerd Haccou</div>
+              </div>
+              <div class="det-row">
+                <div class="det-field">
+                  <div class="det-field-label">E-mail</div>
+                  <input class="dash-input" id="detEmail" type="email" placeholder="je@email.com">
+                </div>
+                <div class="det-field">
+                  <div class="det-field-label">Telefoon</div>
+                  <input class="dash-input" id="detTelefoon" type="tel" placeholder="06-12345678">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Photos tab -->
+          <div class="dash-tab-content" id="tab-photos">
+            <div style="margin-bottom: 16px;">
+              <span style="font-weight:600;font-size:0.9rem;">Foto's van je initiatief</span>
+              <span style="color:#888;font-size:0.8rem;margin-left:8px;">(max. 10 foto's)</span>
+            </div>
+
+            <div class="photo-grid" id="photoGrid">
+              <div class="photo-item main" id="mainPhoto" style="display:none;">
+                <img src="" alt="Hoofdfoto" id="mainPhotoImg">
+              </div>
+              <div class="photo-upload" onclick="document.getElementById('dashPhotoInput').click()">
+                <div class="photo-upload-icon">+</div>
+                <div>Foto toevoegen</div>
+              </div>
+              <div class="photo-upload" onclick="document.getElementById('dashPhotoInput').click()">
+                <div class="photo-upload-icon">+</div>
+                <div>Foto toevoegen</div>
+              </div>
+              <div class="photo-upload" onclick="document.getElementById('dashPhotoInput').click()">
+                <div class="photo-upload-icon">+</div>
+                <div>Foto toevoegen</div>
+              </div>
+            </div>
+            <input type="file" id="dashPhotoInput" accept=".jpg,.jpeg,.png,.webp" style="display:none" multiple>
+            <div class="photo-hint">Sleep foto's hierheen of klik op een vakje om te uploaden. JPG, PNG of WebP - max. 5MB per foto.</div>
+          </div>
+
+          <!-- Settings tab -->
+          <div class="dash-tab-content" id="tab-settings">
+            <div class="settings-section">
+              <div class="settings-title">Email-notificaties</div>
+              <div class="settings-subtitle">via CrowdBuilding</div>
+              <label class="settings-check">
+                <input type="checkbox">
+                <div>
+                  <div class="settings-check-label">Bij nieuw bericht op dit initiatief</div>
+                  <div class="settings-check-desc">Ontvang een email als iemand je een bericht stuurt</div>
+                </div>
+              </label>
+              <label class="settings-check">
+                <input type="checkbox">
+                <div>
+                  <div class="settings-check-label">Dagelijkse samenvatting</div>
+                  <div class="settings-check-desc">Eenmaal per dag een overzicht van nieuwe berichten</div>
+                </div>
+              </label>
+            </div>
+
+            <div class="settings-section">
+              <div class="settings-title">Status</div>
+              <div class="settings-subtitle">Je initiatief is nog niet gepubliceerd. Publiceer het wanneer je klaar bent.</div>
+              <div style="display:flex;gap:8px;margin-bottom:12px;">
+                <div class="status-badge concept" style="cursor:default;">Concept</div>
+                <button class="btn-dash btn-dash-primary" style="padding:4px 14px;font-size:0.8rem;border-radius:8px;">Publiceren</button>
+              </div>
+              <div style="font-size:0.8rem;color:#888;">Na publicatie bekijkt CrowdBuilding je pagina even voordat deze zichtbaar wordt voor anderen.</div>
+            </div>
+
+            <div class="settings-section">
+              <div class="settings-title" style="margin-bottom:12px;">Intake gesprek</div>
+              <div class="intake-card">
+                <div class="intake-icon">☕</div>
+                <div>
+                  <div class="intake-title">Plan een kennismakingsgesprek</div>
+                  <div class="intake-desc">Maak persoonlijk kennis met ons team. We helpen je op weg met advies over je initiatief, subsidies en volgende stappen.</div>
+                  <div class="intake-link">Plan een gesprek →</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-section">
+              <div class="danger-zone">
+                <div class="danger-title">Gevaarzone</div>
+                <div class="danger-desc">Het verwijderen van een initiatief kan niet ongedaan worden gemaakt.</div>
+                <button class="btn-danger">Initiatief verwijderen</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        </div><!-- /dash-center -->
+
+        <!-- Right sidebar panel -->
+        <div class="dash-right" id="dashRightPanel" style="display:none;">
+          <div class="dash-right-section">
+            <h3>Initiatief details</h3>
+            <div class="dash-right-detail">
+              <div class="dash-right-detail-label">Type</div>
+              <div class="dash-right-detail-value" id="rightType">-</div>
+            </div>
+            <div class="dash-right-detail">
+              <div class="dash-right-detail-label">Locatie</div>
+              <div class="dash-right-detail-value" id="rightLocatie">-</div>
+            </div>
+            <div class="dash-right-detail">
+              <div class="dash-right-detail-label">Woningen</div>
+              <div class="dash-right-detail-value" id="rightWoningen">-</div>
+            </div>
+            <div class="dash-right-detail">
+              <div class="dash-right-detail-label">Doelgroep</div>
+              <div class="dash-right-detail-value" id="rightDoelgroep">-</div>
+            </div>
+          </div>
+          <div class="dash-right-section">
+            <h3>Acties</h3>
+            <button class="btn-dash btn-dash-primary" style="width:100%;padding:12px;font-size:0.95rem;border-radius:100px;">+ Lid toevoegen</button>
+            <button class="btn-dash btn-dash-outline" style="width:100%;padding:12px;font-size:0.95rem;border-radius:100px;margin-top:10px;">↗ Delen</button>
+          </div>
+        </div>
+
+        </div><!-- /dash-body -->
+      </div><!-- /dash-content -->
+    </div><!-- /dash-main -->
+  </div><!-- /dashboard -->
+
+  <script>
+    // ===== MODAL FLOW =====
+    let currentStep = 0;
+    const LAST_FORM_STEP = 4;
+    const SUCCESS_STEP = 5;
+    const formData = { fase: null, ontwikkelvorm: null, doelgroepen: [], woonvormen: [], interesses: [], imageUploaded: false };
+
+    function openModal() {
+      document.getElementById('modalOverlay').classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeModal() {
+      document.getElementById('modalOverlay').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+    document.getElementById('modalOverlay').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
+
+    function goToStep(step) {
+      if (step > currentStep + 1 || step > LAST_FORM_STEP) return;
+      currentStep = step;
+      updateUI();
+    }
+
+    function nextStep() {
+      if (!validateStep(currentStep)) return;
+      if (currentStep <= LAST_FORM_STEP) {
+        currentStep++;
+        updateUI();
+        showAutosave();
+      }
+    }
+
+    function skipStep() {
+      if (currentStep <= LAST_FORM_STEP) {
+        currentStep++;
+        updateUI();
+        showAutosave();
+      }
+    }
+
+    function prevStep() {
+      if (currentStep > 0) { currentStep--; updateUI(); }
+    }
+
+    function validateStep(step) {
+      let valid = true;
+
+      if (step === 0) {
+        const naam = document.getElementById('initiatiefNaam').value.trim();
+        if (!naam) {
+          document.getElementById('initiatiefNaam').classList.add('error');
+          document.getElementById('naamError').classList.add('visible');
+          document.getElementById('initiatiefNaam').scrollIntoView({ behavior: 'smooth', block: 'center' });
+          valid = false;
+        } else {
+          document.getElementById('initiatiefNaam').classList.remove('error');
+          document.getElementById('naamError').classList.remove('visible');
+        }
+        if (!formData.fase) {
+          document.getElementById('faseError').classList.add('visible');
+          if (valid) document.getElementById('phaseCards').scrollIntoView({ behavior: 'smooth', block: 'center' });
+          valid = false;
+        } else {
+          document.getElementById('faseError').classList.remove('visible');
+        }
+      }
+
+      // Step 1: no required fields anymore (ontwikkelvorm is optional)
+
+      if (step === 2) {
+        const prov = document.getElementById('provincieSelect').value;
+        if (!prov) {
+          document.getElementById('provincieSelect').style.borderColor = '#ef4444';
+          document.getElementById('provincieError').classList.add('visible');
+          valid = false;
+        } else {
+          document.getElementById('provincieSelect').style.borderColor = '';
+          document.getElementById('provincieError').classList.remove('visible');
+        }
+      }
+
+      if (step === 3) {
+        if (!document.getElementById('privacyConsent').checked) {
+          document.getElementById('privacyError').classList.add('visible');
+          document.querySelector('.privacy-section').scrollIntoView({ behavior: 'smooth', block: 'center' });
+          valid = false;
+        } else {
+          document.getElementById('privacyError').classList.remove('visible');
+        }
+      }
+
+      if (step === 4) {
+        updateSummary();
+        currentStep = SUCCESS_STEP;
+        updateUI();
+        return false;
+      }
+
+      return valid;
+    }
+
+    function updateUI() {
+      document.querySelectorAll('.step-content').forEach(el => {
+        el.classList.toggle('active', parseInt(el.dataset.step) === currentStep);
+      });
+
+      document.querySelectorAll('.sidebar-step').forEach(el => {
+        const step = parseInt(el.dataset.step);
+        el.classList.remove('active', 'completed');
+        if (step === currentStep && currentStep <= LAST_FORM_STEP) el.classList.add('active');
+        else if (step < currentStep) el.classList.add('completed');
+        if (currentStep === SUCCESS_STEP) el.classList.add('completed');
+        el.querySelector('.step-number').innerHTML = step < currentStep || currentStep === SUCCESS_STEP ? '✓' : step + 1;
+      });
+
+      document.getElementById('btnBack').disabled = currentStep === 0;
+      const btnNext = document.getElementById('btnNext');
+      const btnSkip = document.getElementById('btnSkip');
+      const footer = document.getElementById('modalFooter');
+
+      if (currentStep === SUCCESS_STEP) {
+        footer.style.display = 'none';
+      } else if (currentStep === LAST_FORM_STEP) {
+        footer.style.display = 'flex';
+        btnNext.innerHTML = 'Initiatief aanmaken →';
+        btnSkip.style.display = 'none';
+        updateSummary();
+        updatePreview();
+      } else {
+        footer.style.display = 'flex';
+        btnNext.innerHTML = 'Ga verder →';
+        btnSkip.style.display = (currentStep === 1 || currentStep === 2) ? 'inline-block' : 'none';
+      }
+
+      document.querySelector('.step-content-wrapper').scrollTop = 0;
+    }
+
+    function selectPhase(el, phase) {
+      document.querySelectorAll('.phase-card').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+      formData.fase = phase;
+      document.getElementById('faseError').classList.remove('visible');
+    }
+
+    function selectChip(el, group, single = false) {
+      if (single) {
+        el.closest('.chip-group').querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        formData[group] = el.textContent.trim().split('\n')[0].replace('?','').trim();
+      } else {
+        el.classList.toggle('selected');
+        const chips = el.closest('.chip-group').querySelectorAll('.chip.selected');
+        const key = group === 'doelgroep' ? 'doelgroepen' : group === 'woonvorm' ? 'woonvormen' : 'interesses';
+        formData[key] = Array.from(chips).map(c => {
+          const rm = c.querySelector('.chip-remove');
+          return c.textContent.replace(rm ? rm.textContent : '', '').trim();
+        });
+      }
+    }
+
+    function addCustomChip(containerId, group) {
+      const input = document.getElementById('customInteresse');
+      const val = input.value.trim();
+      if (!val) return;
+      const existing = formData.interesses.map(i => i.toLowerCase());
+      if (existing.includes(val.toLowerCase())) { input.value = ''; return; }
+      const container = document.getElementById(containerId);
+      const wrapper = container.querySelector('.chip-add-wrapper');
+      const chip = document.createElement('div');
+      chip.className = 'chip selected custom';
+      chip.innerHTML = val + '<span class="chip-remove" onclick="removeCustomChip(event, this, \'' + group + '\')">×</span>';
+      chip.onclick = function(e) {
+        if (e.target.classList.contains('chip-remove')) return;
+        selectChip(this, group);
+      };
+      container.insertBefore(chip, wrapper);
+      formData.interesses.push(val);
+      input.value = '';
+    }
+
+    function removeCustomChip(e, btn, group) {
+      e.stopPropagation();
+      const chip = btn.closest('.chip');
+      const text = chip.textContent.replace('×', '').trim();
+      const key = group === 'interesse' ? 'interesses' : group;
+      formData[key] = formData[key].filter(i => i !== text);
+      chip.remove();
+    }
+
+    function selectToggle(el) {
+      el.closest('.toggle-group').querySelectorAll('.toggle-option').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+    }
+
+    function handleUpload(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const maxSize = 5 * 1024 * 1024;
+      const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+      const errEl = document.getElementById('uploadError');
+      if (!allowed.includes(file.type)) { errEl.textContent = 'Alleen JPG, PNG of WebP bestanden zijn toegestaan.'; errEl.classList.add('visible'); return; }
+      if (file.size > maxSize) { errEl.textContent = 'Bestand is te groot. Maximum is 5MB.'; errEl.classList.add('visible'); return; }
+      errEl.classList.remove('visible');
+      document.getElementById('uploadArea').innerHTML = '<div class="upload-icon">✅</div><div class="upload-text"><strong>' + file.name + '</strong> (' + (file.size / 1024).toFixed(0) + ' KB)</div><div class="upload-formats" style="color:#22c55e;">Geüpload - klik om te wijzigen</div>';
+      formData.imageUploaded = true;
+    }
+
+    function showAutosave() {
+      const el = document.getElementById('autosave');
+      el.style.display = 'flex';
+      setTimeout(() => el.style.display = 'none', 3000);
+    }
+
+    function updateSummary() {
+      document.getElementById('sumFase').textContent = formData.fase || '-';
+      document.getElementById('sumNaam').textContent = document.getElementById('initiatiefNaam')?.value || '-';
+      document.getElementById('sumOntwikkelvorm').textContent = formData.ontwikkelvorm || '-';
+      document.getElementById('sumImage').textContent = formData.imageUploaded ? 'Geüpload' : 'Niet geüpload (optioneel)';
+      document.getElementById('sumProvincie').textContent = document.getElementById('provincieSelect')?.value || '-';
+      document.getElementById('sumContact').textContent = (document.getElementById('voornaamInput')?.value || '') + ' ' + (document.getElementById('achternaamInput')?.value || '');
+      document.getElementById('sumEmail').textContent = document.getElementById('emailInput')?.value || '-';
+      const doelEl = document.getElementById('sumDoelgroepen');
+      if (formData.doelgroepen.length) {
+        doelEl.innerHTML = formData.doelgroepen.map(d => '<span class="summary-chip">' + d + '</span>').join('');
+      } else {
+        doelEl.innerHTML = '<span style="color:#999;font-size:0.85rem;">Niet ingevuld</span>';
+      }
+    }
+
+    function updatePreview() {
+      document.getElementById('previewPhase').textContent = formData.fase || 'Fase';
+      document.getElementById('previewTitle').textContent = document.getElementById('initiatiefNaam')?.value || 'Naam initiatief';
+      const prov = document.getElementById('provincieSelect')?.value || '';
+      const plaats = document.getElementById('plaatsInput')?.value || '';
+      const loc = [plaats, prov].filter(Boolean).join(', ') || 'Locatie';
+      const naam = (document.getElementById('voornaamInput')?.value || '') + ' ' + (document.getElementById('achternaamInput')?.value || '');
+      document.getElementById('previewMeta').innerHTML = '📍 ' + loc + ' &nbsp;&middot;&nbsp; 👤 ' + naam.trim();
+    }
+
+    // ===== DASHBOARD =====
+
+    // Dummy data for the pre-existing initiatives
+    const initiatives = [
+      { name: 'Wooncoöperatie De Warren', locatie: 'Amsterdam, Noord-Holland', fase: 'Ontwerpfase', status: 'Actief', statusClass: 'active', type: 'Wooncoöperatie', woningen: '24 eenheden', doelgroep: 'Starters & doorstromers', img: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=128&h=128&fit=crop' },
+      { name: 'Tiny Houses Alkmaar', locatie: 'Alkmaar, Noord-Holland', fase: 'Ideefase', status: 'Concept', statusClass: 'concept', type: 'CPO', woningen: '12 eenheden', doelgroep: 'Starters', img: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=128&h=128&fit=crop' }
+    ];
+
+    function openInitiativeDetail(index) {
+      const ini = initiatives[index];
+      if (!ini) return;
+
+      // Hide list, show detail card + right panel
+      document.getElementById('dashList').style.display = 'none';
+      document.getElementById('dashInitiativeCard').style.display = '';
+      document.getElementById('dashRightPanel').style.display = '';
+
+      // Populate the card header
+      document.getElementById('dashCardTitle').textContent = ini.name;
+      document.getElementById('dashCardLocation').textContent = '📍 ' + ini.locatie;
+      document.getElementById('dashCardFase').textContent = ini.fase;
+
+      // Populate right panel
+      document.getElementById('rightType').textContent = ini.type;
+      document.getElementById('rightLocatie').textContent = ini.locatie;
+      document.getElementById('rightWoningen').textContent = ini.woningen;
+      document.getElementById('rightDoelgroep').textContent = ini.doelgroep;
+
+      // Update status badge
+      const badge = document.querySelector('#dashInitiativeCard .status-badge');
+      badge.textContent = ini.status;
+      badge.className = 'status-badge ' + ini.statusClass;
+
+      window.scrollTo(0, 0);
+    }
+
+    function backToList() {
+      document.getElementById('dashList').style.display = '';
+      document.getElementById('dashInitiativeCard').style.display = 'none';
+      document.getElementById('dashRightPanel').style.display = 'none';
+      window.scrollTo(0, 0);
+    }
+
+    function showDashboard() {
+      // Hide modal
+      document.getElementById('modalOverlay').classList.remove('active');
+      document.body.style.overflow = '';
+
+      // Add new initiative to list
+      const naam = document.getElementById('initiatiefNaam')?.value || 'Nieuw initiatief';
+      const provincie = document.getElementById('provincieSelect')?.value || '';
+      const plaats = document.getElementById('plaatsInput')?.value || '';
+      const loc = [plaats, provincie].filter(Boolean).join(', ') || '-';
+      const aantal = document.getElementById('aantalSelect')?.value || '-';
+
+      const newIni = {
+        name: naam,
+        locatie: loc,
+        fase: formData.fase || '-',
+        status: 'Concept',
+        statusClass: 'concept',
+        type: formData.ontwikkelvorm || '-',
+        woningen: aantal !== '-' ? aantal + ' eenheden' : '-',
+        doelgroep: formData.doelgroepen.length ? formData.doelgroepen.join(', ') : '-',
+        img: null
+      };
+      initiatives.push(newIni);
+      const idx = initiatives.length - 1;
+
+      // Add bar to list
+      const list = document.getElementById('dashList');
+      const item = document.createElement('div');
+      item.className = 'dash-list-item';
+      item.onclick = function() { openInitiativeDetail(idx); };
+      item.innerHTML = '<div class="dash-list-thumb">🏠</div>' +
+        '<div class="dash-list-info">' +
+          '<div class="dash-list-name">' + naam + '</div>' +
+          '<div class="dash-list-meta"><span>📍 ' + loc + '</span><span>·</span><span>' + (formData.fase || '-') + '</span></div>' +
+        '</div>' +
+        '<div class="status-badge concept">Concept</div>';
+      list.appendChild(item);
+
+      // Open the new initiative detail
+      openInitiativeDetail(idx);
+
+      // Also populate the full detail form
+      populateDashboard();
+    }
+
+    function populateDashboard() {
+      const naam = document.getElementById('initiatiefNaam')?.value || '';
+      const slogan = document.getElementById('sloganInput')?.value || '';
+      const visie = document.getElementById('visieInput')?.value || '';
+      const provincie = document.getElementById('provincieSelect')?.value || '';
+      const plaats = document.getElementById('plaatsInput')?.value || '';
+      const email = document.getElementById('emailInput')?.value || '';
+      const telefoon = document.getElementById('telefoonInput')?.value || '';
+      const aantal = document.getElementById('aantalSelect')?.value || '';
+      const budget = document.getElementById('budgetSelect')?.value || '';
+      const voornaam = document.getElementById('voornaamInput')?.value || 'Tjeerd';
+      const achternaam = document.getElementById('achternaamInput')?.value || 'Haccou';
+      const loc = [plaats, provincie].filter(Boolean).join(', ');
+
+      // Card header
+      document.getElementById('dashCardTitle').textContent = naam || '-';
+      document.getElementById('dashCardLocation').textContent = '📍 ' + (loc || '-');
+      document.getElementById('dashCardFase').textContent = formData.fase || '-';
+      document.getElementById('dashGreetName').textContent = voornaam;
+      document.getElementById('dashUsername').textContent = voornaam;
+      document.getElementById('dashAvatar').textContent = (voornaam[0] || 'T') + (achternaam[0] || 'H');
+
+      // Details — inputs
+      document.getElementById('detNaam').value = naam;
+      document.getElementById('detSlogan').value = slogan;
+      document.getElementById('detEmail').value = email;
+      document.getElementById('detTelefoon').value = telefoon;
+      document.getElementById('detPlaats').value = plaats;
+      document.getElementById('detContactNaam').textContent = [voornaam, achternaam].filter(Boolean).join(' ');
+
+      // Rich editor
+      if (visie) document.getElementById('detVisie').innerText = visie;
+
+      // Dropdowns
+      if (formData.fase) document.getElementById('detFase').value = formData.fase;
+      if (provincie) document.getElementById('detProvincie').value = provincie;
+      if (aantal) document.getElementById('detAantal').value = aantal;
+      if (budget) document.getElementById('detBudget').value = budget;
+
+      // Chips — select matching ones
+      dashSelectChips('dashOntwikkelvormChips', formData.ontwikkelvorm ? [formData.ontwikkelvorm] : []);
+      dashSelectChips('dashDoelgroepChips', formData.doelgroepen);
+      dashSelectChips('dashWoonvormChips', formData.woonvormen);
+      dashSelectChips('dashInteresseChips', formData.interesses);
+
+      // Right panel
+      document.getElementById('rightType').textContent = formData.ontwikkelvorm || '-';
+      document.getElementById('rightLocatie').textContent = loc || '-';
+      document.getElementById('rightWoningen').textContent = aantal ? aantal + ' eenheden' : '-';
+      document.getElementById('rightDoelgroep').textContent = formData.doelgroepen.length ? formData.doelgroepen.join(', ') : '-';
+    }
+
+    function dashSelectChips(containerId, values) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      container.querySelectorAll('.dash-chip').forEach(chip => {
+        const text = chip.textContent.trim();
+        if (values.includes(text)) chip.classList.add('selected');
+        else chip.classList.remove('selected');
+      });
+    }
+
+    function dashChip(el, group, single) {
+      if (single) {
+        el.closest('.dash-chips').querySelectorAll('.dash-chip').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+      } else {
+        el.classList.toggle('selected');
+      }
+    }
+
+    function addDashChip(input, group) {
+      const val = input.value.trim();
+      if (!val) return;
+      const container = input.closest('.dash-chips');
+      // Check duplicate
+      const existing = Array.from(container.querySelectorAll('.dash-chip')).map(c => c.textContent.trim().toLowerCase());
+      if (existing.includes(val.toLowerCase())) { input.value = ''; return; }
+      const chip = document.createElement('div');
+      chip.className = 'dash-chip selected';
+      chip.textContent = val;
+      chip.onclick = function() { dashChip(this, group); };
+      container.insertBefore(chip, input);
+      input.value = '';
+    }
+
+    // Rich text editor
+    function execRich(cmd, val) {
+      if (cmd === 'formatBlock') {
+        document.execCommand('formatBlock', false, '<' + val + '>');
+      } else {
+        document.execCommand(cmd, false, val || null);
+      }
+      document.getElementById('detVisie').focus();
+    }
+    function execRichLink() {
+      const url = prompt('Voer URL in:', 'https://');
+      if (url) document.execCommand('createLink', false, url);
+      document.getElementById('detVisie').focus();
+    }
+
+    // Document upload
+    function handleDocUpload(input) {
+      const files = Array.from(input.files);
+      const grid = document.getElementById('docGrid');
+      const existing = grid.querySelectorAll('.doc-item').length;
+      const maxDocs = 5;
+      files.slice(0, maxDocs - existing).forEach(file => {
+        const item = document.createElement('div');
+        item.className = 'doc-item';
+        const ext = file.name.split('.').pop().toUpperCase();
+        const icon = ext === 'PDF' ? '📕' : ext.includes('DOC') ? '📘' : '📗';
+        item.innerHTML = '<button class="doc-item-remove" onclick="this.parentElement.remove()">×</button>' +
+          '<div class="doc-item-icon">' + icon + '</div>' +
+          '<div class="doc-item-name">' + file.name + '</div>' +
+          '<div class="doc-item-size">' + (file.size / 1024).toFixed(0) + ' KB</div>';
+        grid.insertBefore(item, grid.querySelector('.doc-upload'));
+      });
+      input.value = '';
+      // Hide upload if max reached
+      if (grid.querySelectorAll('.doc-item').length >= maxDocs) {
+        grid.querySelector('.doc-upload').style.display = 'none';
+      }
+    }
+
+    function switchDashTab(btn, tabName) {
+      btn.closest('.dash-tabs').querySelectorAll('.dash-tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      btn.closest('.dash-card').querySelectorAll('.dash-tab-content').forEach(c => c.classList.remove('active'));
+      document.getElementById('tab-' + tabName).classList.add('active');
+    }
+
+    // Clear errors on input
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('initiatiefNaam')?.addEventListener('input', function() {
+        if (this.value.trim()) { this.classList.remove('error'); document.getElementById('naamError').classList.remove('visible'); }
+      });
+      document.getElementById('privacyConsent')?.addEventListener('change', function() {
+        if (this.checked) document.getElementById('privacyError').classList.remove('visible');
+      });
+      document.getElementById
